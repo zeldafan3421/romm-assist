@@ -1,0 +1,9 @@
+services:
+  romm-assist:
+    build: .
+    image: ghcr.io/zeldafan3421/romm-assist:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: unless-stopped

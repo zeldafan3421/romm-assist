@@ -38,6 +38,11 @@ def _raise_for_romm_error(exc: RommAPIError) -> NoReturn:
     raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
+@app.get("/health", summary="Liveness check for the tool server process itself", include_in_schema=False)
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 @app.get(
     "/platforms",
     response_model=list[Platform],

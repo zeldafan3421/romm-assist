@@ -73,6 +73,36 @@ This starts the server on `http://localhost:8000`. Interactive docs are at
 | DELETE | `/collections/{collection_id}/roms/{rom_id}` | Remove a ROM from a collection |
 | GET | `/stats` | Library statistics |
 
+## Running with Docker
+
+```bash
+cp .env.example .env   # edit it first
+docker compose up --build
+```
+
+Or without compose:
+
+```bash
+docker build -t romm-assist .
+docker run --rm -p 8000:8000 --env-file .env romm-assist
+```
+
+The container exposes port `8000` and includes a `HEALTHCHECK` against
+`GET /health`.
+
+### Prebuilt image
+
+Every push to the default branch and every `vX.Y.Z` tag is built and
+published to GHCR by `.github/workflows/docker.yml`:
+
+```bash
+docker pull ghcr.io/zeldafan3421/romm-assist:latest
+docker run --rm -p 8000:8000 --env-file .env ghcr.io/zeldafan3421/romm-assist:latest
+```
+
+Pull requests and other branches only build the image (to catch breakage)
+without pushing it.
+
 ## A note on the RomM API surface
 
 RomM's REST API has evolved across versions, and its full schema is only
