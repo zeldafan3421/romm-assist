@@ -103,6 +103,52 @@ docker run --rm -p 8000:8000 --env-file .env ghcr.io/zeldafan3421/romm-assist:la
 Pull requests and other branches only build the image (to catch breakage)
 without pushing it.
 
+## Optional local LLM (llama.cpp)
+
+`docker-compose.yml` includes an optional `llamacpp` service that runs
+[llama.cpp's](https://github.com/ggml-org/llama.cpp) `llama-server`, giving
+you a small, self-hosted, OpenAI-API-compatible model to drive agentic use
+of the `romm-assist` tools — no external LLM API required. It's off by
+default (behind the `llm` compose profile) since it's an optional add-on to
+the tool server, not a dependency of it.
+
+```bash
+cp .env.example .env          # defaults work out of the box
+docker compose --profile llm up -d
+```
+
+On first start it downloads and caches **Qwen2.5-1.5B-Instruct** quantized
+to `Q4_K_M` (~1 GB) directly from Hugging Face — a small model chosen to run
+comfortably on CPU while still following tool-calling chat templates
+(`--jinja` is enabled for this). Subsequent restarts reuse the cached
+weights via the `llamacpp-models` volume, no re-download.
+
+It's CPU-only and lightweight by default (`LLAMACPP_N_GPU_LAYERS=0`,
+`LLAMACPP_THREADS=4`, `LLAMACPP_CTX_SIZE=4096`); tune these, or swap in a
+different GGUF model entirely, via the `LLAMACPP_*` variables in `.env` (see
+`.env.example`). Since RomM's own default port is also `8080`, change
+`LLAMACPP_PORT` if that collides on your host.
+
+The server listens on `LLAMACPP_PORT` (default `8080`) with an
+OpenAI-compatible API at `/v1/*`, so it works as a drop-in model backend for
+Open WebUI or any other OpenAI-API client, and is reachable from other
+machines on your network the same way any published Docker port is (set
+`LLAMACPP_API_KEY` if that's more exposure than you want without auth).
+
+### Wiring it into Open WebUI
+
+1. **Model backend** — in Open WebUI, go to Settings -> Connections -> add
+   an "OpenAI API" connection with base URL `http://<host>:8080/v1` (any
+   value works as the API key unless you set `LLAMACPP_API_KEY`).
+2. **RomM tools** — go to Settings -> Tools -> add an OpenAPI tool server
+   with URL `http://<host>:8000/openapi.json` (the `romm-assist` service
+   from this repo). This is what actually exposes the RomM library
+   operations to the model.
+
+With both connected, chatting through Open WebUI against the Qwen2.5 model
+lets it call the `romm-assist` endpoints to browse, search, and manage your
+RomM library.
+
 ## A note on the RomM API surface
 
 RomM's REST API has evolved across versions, and its full schema is only

@@ -25,6 +25,12 @@ jobs:
 
       - run: pytest -q
 
+      - name: Validate docker-compose.yml (both profiles)
+        run: |
+          cp .env.example .env
+          docker compose config -q
+          docker compose --profile llm config -q
+
   build-and-push:
     needs: test
     runs-on: ubuntu-latest
