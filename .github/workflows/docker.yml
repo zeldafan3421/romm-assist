@@ -25,11 +25,20 @@ jobs:
 
       - run: pytest -q
 
-      - name: Validate docker-compose.yml (both profiles)
+      - name: Validate compose files (base, and base + llm add-on)
         run: |
           cp .env.example .env
           docker compose config -q
-          docker compose --profile llm config -q
+          docker compose -f docker-compose.yml -f docker-compose.llm.yml config -q
+
+  podman-build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image with Podman
+        run: podman build -t romm-assist:podman-ci .
 
   build-and-push:
     needs: test

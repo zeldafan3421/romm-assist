@@ -1,0 +1,32 @@
+# Optional add-on: a local LLM backend powered by llama.cpp's
+# OpenAI-compatible server. This file only exists so the LLM container is
+# truly opt-in — the base docker-compose.yml has no knowledge of it at all.
+# Layer it on top of the base file to start both together:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.llm.yml up -d
+#   podman compose -f docker-compose.yml -f docker-compose.llm.yml up -d
+#
+# See README.md#optional-local-llm-llamacpp for model/resource tuning and
+# how to wire this and romm-assist into Open WebUI.
+services:
+  llamacpp:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command: ["--jinja"] # enables chat templates that support tool calling
+    ports:
+      - "${LLAMACPP_PORT:-8080}:8080"
+    volumes:
+      - llamacpp-models:/models
+    environment:
+      LLAMA_CACHE: /models
+      LLAMA_ARG_HF_REPO: ${LLAMACPP_HF_REPO:-Qwen/Qwen2.5-1.5B-Instruct-GGUF}
+      LLAMA_ARG_HF_FILE: ${LLAMACPP_HF_FILE:-qwen2.5-1.5b-instruct-q4_k_m.gguf}
+      LLAMA_ARG_CTX_SIZE: ${LLAMACPP_CTX_SIZE:-4096}
+      LLAMA_ARG_THREADS: ${LLAMACPP_THREADS:-4}
+      LLAMA_ARG_N_GPU_LAYERS: ${LLAMACPP_N_GPU_LAYERS:-0}
+      LLAMA_ARG_HOST: 0.0.0.0
+      LLAMA_ARG_PORT: 8080
+      LLAMA_API_KEY: ${LLAMACPP_API_KEY:-}
+    restart: unless-stopped
+
+volumes:
+  llamacpp-models:

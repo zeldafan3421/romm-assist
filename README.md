@@ -73,18 +73,23 @@ This starts the server on `http://localhost:8000`. Interactive docs are at
 | DELETE | `/collections/{collection_id}/roms/{rom_id}` | Remove a ROM from a collection |
 | GET | `/stats` | Library statistics |
 
-## Running with Docker
+## Running in containers (Docker or Podman)
+
+Everything here works identically with `docker` or `podman` — the compose
+files use no Docker-specific extensions, and the image builds from a plain
+`Dockerfile` (also symlinked as `Containerfile` since that's what bare
+`podman build .` looks for by default).
 
 ```bash
 cp .env.example .env   # edit it first
-docker compose up --build
+docker compose up --build     # or: podman compose up --build
 ```
 
 Or without compose:
 
 ```bash
-docker build -t romm-assist .
-docker run --rm -p 8000:8000 --env-file .env romm-assist
+docker build -t romm-assist .                                   # or: podman build -t romm-assist .
+docker run --rm -p 8000:8000 --env-file .env romm-assist        # or: podman run --rm -p 8000:8000 --env-file .env romm-assist
 ```
 
 The container exposes port `8000` and includes a `HEALTHCHECK` against
@@ -93,11 +98,15 @@ The container exposes port `8000` and includes a `HEALTHCHECK` against
 ### Prebuilt image
 
 Every push to the default branch and every `vX.Y.Z` tag is built and
-published to GHCR by `.github/workflows/docker.yml`:
+published to GHCR by `.github/workflows/docker.yml` (the same workflow also
+builds the image with Podman on every run, as a portability check):
 
 ```bash
 docker pull ghcr.io/zeldafan3421/romm-assist:latest
 docker run --rm -p 8000:8000 --env-file .env ghcr.io/zeldafan3421/romm-assist:latest
+# or, with Podman:
+podman pull ghcr.io/zeldafan3421/romm-assist:latest
+podman run --rm -p 8000:8000 --env-file .env ghcr.io/zeldafan3421/romm-assist:latest
 ```
 
 Pull requests and other branches only build the image (to catch breakage)
@@ -105,17 +114,24 @@ without pushing it.
 
 ## Optional local LLM (llama.cpp)
 
-`docker-compose.yml` includes an optional `llamacpp` service that runs
-[llama.cpp's](https://github.com/ggml-org/llama.cpp) `llama-server`, giving
-you a small, self-hosted, OpenAI-API-compatible model to drive agentic use
-of the `romm-assist` tools — no external LLM API required. It's off by
-default (behind the `llm` compose profile) since it's an optional add-on to
-the tool server, not a dependency of it.
+The LLM backend is a genuinely separate, opt-in container: `docker-compose.yml`
+(the base file) has no knowledge of it at all, and it only exists if you
+also load `docker-compose.llm.yml`. There's no flag to forget — if you don't
+reference the second file, the LLM container is never defined, built, or
+started.
 
 ```bash
-cp .env.example .env          # defaults work out of the box
-docker compose --profile llm up -d
+# Without the LLM (default):
+docker compose up -d                                                # or: podman compose up -d
+
+# With the LLM:
+docker compose -f docker-compose.yml -f docker-compose.llm.yml up -d   # or the podman compose equivalent
 ```
+
+`docker-compose.llm.yml` adds one service, `llamacpp`, running
+[llama.cpp's](https://github.com/ggml-org/llama.cpp) `llama-server` — a
+small, self-hosted, OpenAI-API-compatible model server to drive agentic use
+of the `romm-assist` tools, with no external LLM API required.
 
 On first start it downloads and caches **Qwen2.5-1.5B-Instruct** quantized
 to `Q4_K_M` (~1 GB) directly from Hugging Face — a small model chosen to run
@@ -132,7 +148,7 @@ different GGUF model entirely, via the `LLAMACPP_*` variables in `.env` (see
 The server listens on `LLAMACPP_PORT` (default `8080`) with an
 OpenAI-compatible API at `/v1/*`, so it works as a drop-in model backend for
 Open WebUI or any other OpenAI-API client, and is reachable from other
-machines on your network the same way any published Docker port is (set
+machines on your network the same way any published container port is (set
 `LLAMACPP_API_KEY` if that's more exposure than you want without auth).
 
 ### Wiring it into Open WebUI
