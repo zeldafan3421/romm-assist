@@ -31,6 +31,9 @@ jobs:
           docker compose config -q
           docker compose -f docker-compose.yml -f docker-compose.llm.yml config -q
 
+      - name: Validate Kubernetes manifests
+        run: python k8s/validate.py
+
   podman-build:
     needs: test
     runs-on: ubuntu-latest
@@ -38,7 +41,31 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build image with Podman
-        run: podman build -t romm-assist:podman-ci .
+        run: podman build -t ghcr.io/zeldafan3421/romm-assist:latest .
+
+      - name: Smoke-test the Deployment with rootless podman kube play
+        run: |
+          podman kube play k8s/romm-assist-secret.example.yaml k8s/romm-assist-deployment.yaml
+          ok=""
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/health; then
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+          echo
+          if [ -z "$ok" ]; then
+            echo "romm-assist did not become healthy under podman kube play in time"
+            podman ps -a
+            podman pod ps
+            exit 1
+          fi
+          echo "romm-assist is healthy under podman kube play"
+
+      - name: Tear down kube play resources
+        if: always()
+        run: podman kube down k8s/romm-assist-deployment.yaml k8s/romm-assist-secret.example.yaml || true
 
   build-and-push:
     needs: test

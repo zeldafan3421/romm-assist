@@ -1,0 +1,52 @@
+# Playable directly with either engine:
+#   kubectl apply -f romm-assist-secret.yaml -f romm-assist-deployment.yaml
+#   podman kube play romm-assist-secret.yaml romm-assist-deployment.yaml
+#
+# hostPort below is what makes rootless `podman kube play` reachable on the
+# host without a Service (kube play doesn't support the Service kind).
+# On a real cluster with a restricted PodSecurity policy, hostPort may be
+# rejected — drop it there and use romm-assist-service.yaml + your own
+# Ingress/port-forward instead.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: romm-assist
+  labels:
+    app: romm-assist
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: romm-assist
+  template:
+    metadata:
+      labels:
+        app: romm-assist
+    spec:
+      # imagePullSecrets:
+      #   - name: ghcr-pull-secret # kubectl create secret docker-registry ghcr-pull-secret ...
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: romm-assist
+          image: ghcr.io/zeldafan3421/romm-assist:latest
+          envFrom:
+            - secretRef:
+                name: romm-assist-env
+          ports:
+            - name: http
+              containerPort: 8000
+              hostPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15

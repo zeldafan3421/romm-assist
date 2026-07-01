@@ -1,0 +1,86 @@
+# Optional add-on, mirroring docker-compose.llm.yml: this file is never
+# referenced by romm-assist-deployment.yaml, so the LLM stays out of your
+# cluster/pod set entirely unless you apply/play it explicitly.
+#
+#   kubectl apply -f llamacpp-deployment.yaml
+#   podman kube play llamacpp-deployment.yaml
+#
+# First start downloads and caches Qwen2.5-1.5B-Instruct (Q4_K_M, ~1 GB)
+# from Hugging Face into the PVC below — see README.md#optional-local-llm-llamacpp
+# for model/resource tuning and Open WebUI wiring. Probe delays are generous
+# to allow for that first download; tighten them once the model is cached.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: llamacpp-models
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llamacpp-env
+data:
+  LLAMA_CACHE: /models
+  LLAMA_ARG_HF_REPO: Qwen/Qwen2.5-1.5B-Instruct-GGUF
+  LLAMA_ARG_HF_FILE: qwen2.5-1.5b-instruct-q4_k_m.gguf
+  LLAMA_ARG_CTX_SIZE: "4096"
+  LLAMA_ARG_THREADS: "4"
+  LLAMA_ARG_N_GPU_LAYERS: "0"
+  LLAMA_ARG_HOST: "0.0.0.0"
+  LLAMA_ARG_PORT: "8080"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llamacpp
+  labels:
+    app: llamacpp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llamacpp
+  template:
+    metadata:
+      labels:
+        app: llamacpp
+    spec:
+      containers:
+        - name: llamacpp
+          image: ghcr.io/ggml-org/llama.cpp:server
+          args: ["--jinja"] # enables chat templates that support tool calling
+          envFrom:
+            - configMapRef:
+                name: llamacpp-env
+            # - secretRef:
+            #     name: llamacpp-secret # set LLAMA_API_KEY if exposed beyond a trusted network
+          ports:
+            - name: http
+              containerPort: 8080
+              hostPort: 8080
+          volumeMounts:
+            - name: models
+              mountPath: /models
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 60 # tolerate a slow first-time model download
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 10
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: llamacpp-models

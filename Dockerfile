@@ -6,6 +6,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# curl is needed for httpGet probes when this image runs under
+# `podman kube play` (rootless), which execs curl inside the container to
+# satisfy Kubernetes-style httpGet checks instead of probing from outside.
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY pyproject.toml README.md ./
 COPY src ./src
 

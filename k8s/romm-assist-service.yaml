@@ -1,0 +1,15 @@
+# For real Kubernetes clusters only — `podman kube play` does not support
+# the Service kind (it uses hostPort in romm-assist-deployment.yaml
+# instead), so this file is simply not passed to `podman kube play`.
+#   kubectl apply -f romm-assist-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: romm-assist
+spec:
+  selector:
+    app: romm-assist
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

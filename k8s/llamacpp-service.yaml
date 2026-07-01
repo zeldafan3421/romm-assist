@@ -1,0 +1,13 @@
+# For real Kubernetes clusters only — see the note in romm-assist-service.yaml.
+#   kubectl apply -f llamacpp-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: llamacpp
+spec:
+  selector:
+    app: llamacpp
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
