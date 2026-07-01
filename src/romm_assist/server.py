@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from typing import NoReturn
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from .client import RommAPIError, RommClient
 from .models import Collection, CollectionCreate, Platform, Rom, RomSearchResult, RomUpdate
@@ -27,6 +28,17 @@ app = FastAPI(
     ),
     version="0.1.0",
     lifespan=lifespan,
+)
+
+# Tool loaders (Open WebUI, browser-based clients, etc.) commonly run on a
+# different origin than this server and fetch /openapi.json client-side,
+# which triggers a CORS preflight (OPTIONS) request. Without this, FastAPI
+# has no OPTIONS handler and returns 405.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
