@@ -7,6 +7,29 @@ tools, MCP-via-OpenAPI bridges, or any framework that can import an
 ROMs, edit metadata, delete ROMs, manage collections, and look up metadata
 matches for unidentified games.
 
+## Quickstart
+
+The image is public — no clone, build, or registry login required:
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e ROMM_BASE_URL=http://<your-romm-host>:8080 \
+  -e ROMM_API_TOKEN=rmm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
+  ghcr.io/zeldafan3421/romm-assist:latest
+```
+
+(`podman run` works identically.) Get `ROMM_API_TOKEN` from your RomM
+instance under **Administration -> Client API Tokens** — see
+[Setup](#setup) below for details and the basic-auth fallback. Once it's
+running, point your agent/tool loader (Open WebUI, etc.) at
+`http://localhost:8000/openapi.json` and it picks up every endpoint in
+[Endpoints](#endpoints) as a callable tool.
+
+Prefer Kubernetes (incl. rootless Podman `kube play`), Docker Compose, or
+running from source? See [Running in containers](#running-in-containers)
+and [Setup](#setup). Want a local LLM too, with no external API key? See
+[Optional local LLM](#optional-local-llm-llamacpp).
+
 ## How it fits together
 
 ```
@@ -96,7 +119,10 @@ podman pull ghcr.io/zeldafan3421/romm-assist:latest
 ```
 
 Pull requests and other branches only build the image (to catch breakage)
-without pushing it.
+without pushing it. Tagged releases (`vX.Y.Z`) also publish pinned image
+tags (e.g. `:0.1.0`, `:0.1`) instead of just `:latest` — see
+[Releases](https://github.com/zeldafan3421/romm-assist/releases) and
+[CHANGELOG.md](CHANGELOG.md) for what changed in each one.
 
 ### Kubernetes (kubectl, or rootless Podman via `kube play`)
 
@@ -114,7 +140,6 @@ cp k8s/romm-assist-secret.example.yaml k8s/romm-assist-secret.yaml
 # edit k8s/romm-assist-secret.yaml: ROMM_BASE_URL and ROMM_API_TOKEN
 
 # Rootless Podman:
-podman login ghcr.io   # only if the image is private
 (cat k8s/romm-assist-secret.yaml; echo ---; cat k8s/romm-assist-deployment.yaml) | podman kube play -
 curl http://localhost:8000/health
 
@@ -132,9 +157,10 @@ A few things worth knowing:
   `kube play` is reachable without a Service. A cluster with a restricted
   PodSecurity policy may reject `hostPort` — drop it there and use
   `romm-assist-service.yaml` plus your own Ingress/port-forward instead.
-- For a private `ghcr.io/zeldafan3421/romm-assist` image, `kube play`
-  doesn't support `imagePullSecrets`, so `podman login ghcr.io` first. On a
-  real cluster, `kubectl create secret docker-registry` and uncomment
+- The image is public, so no registry login is needed to pull it. If you
+  fork this and make your own image private, `kube play` doesn't support
+  `imagePullSecrets` — run `podman login ghcr.io` first instead. On a real
+  cluster, `kubectl create secret docker-registry` and uncomment
   `imagePullSecrets` in the Deployment.
 - `k8s/validate.py` does a structural sanity check of every manifest (run
   in CI); it's not a substitute for `kubectl apply --dry-run`.
