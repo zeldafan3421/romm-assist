@@ -45,7 +45,7 @@ jobs:
 
       - name: Smoke-test the Deployment with rootless podman kube play
         run: |
-          cat k8s/romm-assist-secret.example.yaml k8s/romm-assist-deployment.yaml | podman kube play -
+          { cat k8s/romm-assist-secret.example.yaml; echo ---; cat k8s/romm-assist-deployment.yaml; } | podman kube play -
           ok=""
           for i in $(seq 1 30); do
             if curl -fsS http://localhost:8000/health; then
@@ -65,7 +65,8 @@ jobs:
 
       - name: Tear down kube play resources
         if: always()
-        run: cat k8s/romm-assist-secret.example.yaml k8s/romm-assist-deployment.yaml | podman kube down - || true
+        run: |
+          { cat k8s/romm-assist-secret.example.yaml; echo ---; cat k8s/romm-assist-deployment.yaml; } | podman kube down - || true
 
   build-and-push:
     needs: test

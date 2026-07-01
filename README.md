@@ -115,14 +115,14 @@ cp k8s/romm-assist-secret.example.yaml k8s/romm-assist-secret.yaml
 
 # Rootless Podman:
 podman login ghcr.io   # only if the image is private
-cat k8s/romm-assist-secret.yaml k8s/romm-assist-deployment.yaml | podman kube play -
+(cat k8s/romm-assist-secret.yaml; echo ---; cat k8s/romm-assist-deployment.yaml) | podman kube play -
 curl http://localhost:8000/health
 
 # Real cluster:
 kubectl apply -f k8s/romm-assist-secret.yaml -f k8s/romm-assist-deployment.yaml -f k8s/romm-assist-service.yaml
 ```
 
-Tear down with `cat k8s/romm-assist-secret.yaml k8s/romm-assist-deployment.yaml | podman kube down -`
+Tear down with `(cat k8s/romm-assist-secret.yaml; echo ---; cat k8s/romm-assist-deployment.yaml) | podman kube down -`
 or the equivalent `kubectl delete -f ...`.
 
 A few things worth knowing:
