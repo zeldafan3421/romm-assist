@@ -105,7 +105,9 @@ supports the `Deployment`, `PersistentVolumeClaim`, `ConfigMap`, and
 `Secret` kinds used here, but not `Service`, so the `*-deployment.yaml`
 files (playable by both engines) are split from the `*-service.yaml` files
 (real clusters only — kube play instead relies on `hostPort` for direct
-host access).
+host access). `kube play`/`kube down` also only take a single YAML source,
+so multiple files are concatenated and piped in via stdin (`-f` on
+`kubectl apply`/`delete` has no such limit).
 
 ```bash
 cp k8s/romm-assist-secret.example.yaml k8s/romm-assist-secret.yaml
@@ -113,14 +115,14 @@ cp k8s/romm-assist-secret.example.yaml k8s/romm-assist-secret.yaml
 
 # Rootless Podman:
 podman login ghcr.io   # only if the image is private
-podman kube play k8s/romm-assist-secret.yaml k8s/romm-assist-deployment.yaml
+cat k8s/romm-assist-secret.yaml k8s/romm-assist-deployment.yaml | podman kube play -
 curl http://localhost:8000/health
 
 # Real cluster:
 kubectl apply -f k8s/romm-assist-secret.yaml -f k8s/romm-assist-deployment.yaml -f k8s/romm-assist-service.yaml
 ```
 
-Tear down with `podman kube down k8s/romm-assist-deployment.yaml k8s/romm-assist-secret.yaml`
+Tear down with `cat k8s/romm-assist-secret.yaml k8s/romm-assist-deployment.yaml | podman kube down -`
 or the equivalent `kubectl delete -f ...`.
 
 A few things worth knowing:
